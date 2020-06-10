@@ -1,0 +1,212 @@
+---
+title: "Exploring the BRFSS data - Nirmal"
+output: 
+  html_document: 
+    fig_height: 4
+    highlight: pygments
+    theme: spacelab
+---
+
+## Setup
+
+### Load packages
+
+```{r load-packages, message = FALSE}
+library(ggplot2)
+library(dplyr)
+library(forcats)
+```
+
+### Load data
+
+```{r load-data}
+load("brfss2013.RData")
+```
+
+
+
+* * *
+
+## Part 1: Data
+Since 1984, all of the states in the United States (US) and participating US territories and the Centers for Disease Control and Prevention (CDC) collaborated to collect data of US adults to assess the behavioral health of US adults (18 years or older). This system is named **Behavioral Risk Factor Surveillance System (BRFSS)**.
+
+1) **What is our data about ?**
+
+     Our Data is consists of uniform, state-specific data on preventive health practices and risk behaviors that are linked to chronic diseases, injuries, and preventable infectious diseases that affect the adult population.
+
+2) **What factors does the data take into account ?**
+
+     Factors assessed by the BRFSS in 2013 include tobacco use, HIV/AIDS knowledge and prevention, exercise, immunization, health status, healthy days — health-related quality of life, health care access, inadequate sleep, hypertension awareness, cholesterol awareness, chronic health conditions, alcohol consumption, fruits and vegetables consumption, arthritis burden, and seatbelt use. In 2013, additional question sets were included as optional modules to provide a measure for several childhood health and wellness indicators, including asthma prevalence for people aged 17 years or younger.
+ 
+
+3) **Why is this data collected ?**
+
+     This data is collected to assess the risk factos associated with the behavioral health of non-institutionalized adults residing in US.The collection of this data has grown from 15 US states in 1984 to 50 US states and territories in 2001.
+ 
+3) **Mode of data collection**:
+
+     This data is collected through telephonic surveys, both landline and cellular modes.
+    
+4) **Can the data be generalized?**
+
+     This data is collected randomly by selecting one adult per household and hence it is an experiment `performed using random sampling` and `can be generalized to US adult population`.
+
+5) **Can Causal relationship be established?**
+
+     Our experiment is done using telephonic responses from randomly selected US adults and hence few randomly selected calls may get disconnected or the adult may chose to not respond and hence our data has `response bias`. Hence, `causal relationship cannot be inferred`.
+
+6) **Can we think about any other factors affecting causality and does correlation exist?**
+
+     Since the factors assessed are not exhaustive, think about the inclusion of additional question - prevalence of asthma for people aged 17 years or younger added in 2013, and cannot be concluded as the complete driving factors for the behavioral health of US adults. Also, if the household has more than one phone number and any mismatch in the address registered for telephone due to moving out from a rented property could yield in wrong result (response bias) as it may be considered as it may be considered as another household.
+
+     However, `correlation exists` between factors assessed like sleep time affecting physical health in a month.
+    
+
+* * *
+
+## Part 2: Research questions
+
+**Research quesion 1:**
+
+Considering the multiple factors affecting over all mental and physical health which is used to evaluate behavioral health. Let's consider people who are educated and check their over all health compared to age. 
+
+This questions of importance as we can check if educated adults in US are taking good care of their health.
+
+We have three variables to consider in this question (education level, age, general health).
+
+**Research quesion 2:**
+
+Let's now consider the employment level of people, their overall satisfaction with medical care received and their medicaid cost. 
+
+This questions is of importance to me as I want to explore how the treatment satisfaction level changes as medicaid cost changed for people of different employment status.
+
+We have three variables in this question (employment status, treatment satisfaction level, medicaid cost).
+
+
+**Research quesion 3:**
+
+Third research question is related to the causality checking of the experiment, based on the race/ethnic group of participants and the interview completion rate, if partially or completely completed.
+
+* * *
+
+## Part 3: Exploratory data analysis
+
+**Data**
+
+1) As we are able to see below `We have 330 variables with 491775 records`.
+
+```{r}
+dim(brfss2013)
+```
+
+2) The variables for our dataset are below:
+
+
+```{r}
+names(brfss2013)
+```
+
+3) Let's take a look at our data: We have 88.09% completed interview and 11.9% Partially completed interview as given below
+
+```{r}
+ brfs_interview_result <- brfss2013 %>%
+  filter(!is.na(dispcode)) %>%
+  group_by(dispcode)%>%
+  summarise(count=n())%>%
+  mutate(percent=count/sum(count)*100)%>%
+  arrange(desc(count))
+
+ brfs_interview_result
+ 
+ 
+
+```
+
+4) Let's start exploring data graphically to explain our research questions.
+
+```{r}
+
+# asymptom, educa, employ1, income2
+# carercvd, delaymed
+# rrclass2, qstlang, X_hcvu651, X_rfhlth
+
+grep("race", names(brfss2013), value = TRUE)
+```
+
+
+**Research quesion 1:**
+
+```{r}
+library(forcats)
+library(repr)
+
+
+brefssQ1 <- brfss2013 %>%
+  mutate(educa = forcats::fct_explicit_na(educa)) %>%
+  filter(!is.nan(educa)) %>%
+  mutate(age = X_age_g) %>%
+  group_by(educa)
+
+ggplot(brefssQ1, aes(x=age, fill=genhlth) ) + geom_bar(alpha = 1) + xlab("Age") + ylab("Number of general health count") + ggtitle("Density curves of general health according to age grouped by education level") + theme(axis.text.x=element_text(angle = 40,size=5, hjust = 1)) +
+  facet_wrap(~ educa) + theme(panel.grid.minor = element_blank(), 
+  panel.grid.major = element_blank(), strip.text = element_text(size=4.7))
+```
+
+**From the bar graph**, From above graphs we have general health to age comparsion for different education levels, we can see that the general health condition has higher Excellent count for a given age group and it increase with age, giving us an insight that better educated people have better health status as they age.
+
+
+
+**Research Question 2:**
+
+
+```{r}
+brefssQ2 <- brfss2013 %>%
+  mutate(employ1 = forcats::fct_explicit_na(employ1)) %>%
+  filter(!is.nan(employ1), !is.nan(carercvd), !is.nan(X_hcvu651) ) %>%
+  group_by(employ1)
+
+ggplot(brefssQ2, aes(x=X_hcvu651, fill = carercvd) ) + geom_bar(alpha = 1) + xlab("Medical insurance status") + ylab("People Count for a given Treatment satisfaction") + ggtitle("Bar plot of satisfaction level to medical cost grouped by employment level") + theme(axis.text.x=element_text(angle = 40, size=7, hjust = 1)) +
+  facet_wrap(~ employ1) + theme(panel.grid.minor = element_blank(), 
+  panel.grid.major = element_blank(), strip.text = element_text(size=7))
+```
+
+
+**From the bar graph**, we can say that those people who are employed and with health coverage have better treatment satisfaction since higher number people being Very satisfied compared to other employment statuses. 
+
+
+**Research quesion 3:**
+
+```{r}
+
+interview_completion <- brfss2013 %>%
+  filter(!is.na(X_race),!is.na(dispcode),!is.na(X_age_g)) %>%
+  group_by(cellfon3)
+  
+
+ggplot(interview_completion, aes(x=X_race, fill = dispcode) ) + geom_bar(alpha = 1) + xlab("Ethnic group") + ylab("Interview completion count") + ggtitle("Bar plot of Ethnic group vs interview completion status") + theme(axis.text.x=element_text(angle = 40, size=7, hjust = 1)) +
+   theme(panel.grid.minor = element_blank(), 
+  panel.grid.major = element_blank(), strip.text = element_text(size=7))
+
+```
+
+**From the bar graph**, we can clearly see that the number of interview completion rate is higher in White ethnic group as compared to any other ethnic group, this might be due to the higher number of white ethnic group in US.
+
+We can validate it from below graph that white ethnic group are major participants in this data collected.
+
+```{r}
+brfs_race_interview_result <- brfss2013 %>%
+  filter(!is.na(X_race)) %>%
+  group_by(X_race,dispcode)%>%
+  summarise(count=n())%>%
+  mutate(percent=count/sum(count)*100)%>%
+  arrange(desc(count))
+ 
+ brfs_race_interview_result
+```
+
+
+ **© Nirmal Lanka**
+ 
+ **All Rights Reserved**
+ 
+ **June 08, 2020**
